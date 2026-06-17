@@ -1,0 +1,12 @@
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# Never commit any captured operation dumps, sniffed sessions, or env files.
+captured_ops/
+sniffed.json
+.env
+.env.*
+*.session
