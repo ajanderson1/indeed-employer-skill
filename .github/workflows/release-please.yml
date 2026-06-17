@@ -13,6 +13,68 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: googleapis/release-please-action@v4
+        id: release
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      - uses: actions/checkout@v4
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        with:
+          ref: ${{ steps.release.outputs.tag_name }}
+          fetch-depth: 0
+
+      - name: Check release bump type
+        id: bump
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        env:
+          TAG_NAME: ${{ steps.release.outputs.tag_name }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          current="${VERSION:-${TAG_NAME#v}}"
+          IFS=. read -r current_major current_minor current_patch <<< "$current"
+
+          previous_tag="$({ git tag --sort=-v:refname | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' | grep -v "^${TAG_NAME}$" | head -n 1; } || true)"
+
+          is_minor=false
+          if [[ -n "$previous_tag" ]]; then
+            previous="${previous_tag#v}"
+            IFS=. read -r previous_major previous_minor previous_patch <<< "$previous"
+            if [[ "$current_major" == "$previous_major" && "$current_minor" -gt "$previous_minor" && "$current_patch" == "0" ]]; then
+              is_minor=true
+            fi
+          elif [[ "$current_minor" -gt 0 && "$current_patch" == "0" ]]; then
+            is_minor=true
+          fi
+
+          echo "is_minor=${is_minor}" >> "$GITHUB_OUTPUT"
+          echo "current=${current} previous=${previous_tag:-none} is_minor=${is_minor}"
+
+      - name: Package skill
+        if: ${{ steps.bump.outputs.is_minor == 'true' }}
+        env:
+          TAG_NAME: ${{ steps.release.outputs.tag_name }}
+        run: |
+          set -euo pipefail
+
+          package_dir="dist/indeed-employer"
+          archive="dist/indeed-employer-${TAG_NAME}.zip"
+
+          rm -rf dist
+          mkdir -p "$package_dir"
+          cp SKILL.md README.md LICENSE "$package_dir/"
+          cp -R references "$package_dir/references"
+          if [[ -d templates ]]; then
+            cp -R templates "$package_dir/templates"
+          fi
+
+          (cd dist && zip -r "$(basename "$archive")" indeed-employer)
+
+      - name: Upload skill release asset
+        if: ${{ steps.bump.outputs.is_minor == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ steps.release.outputs.tag_name }}
+        run: gh release upload "$TAG_NAME" "dist/indeed-employer-${TAG_NAME}.zip" --clobber
