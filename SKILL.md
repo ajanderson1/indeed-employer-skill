@@ -1,6 +1,16 @@
 ---
 name: indeed-employer
-description: Use when working with the Indeed Employer portal through the indeed_* MCP tools (server at indeed-mcp.ajanderson.net) — reading jobs, candidates/applicants, counts, and applicant detail, or extending capability via the GraphQL passthrough. Triggers on phrases like "show me new candidates", "new applicants for job X", "list my Indeed jobs", "candidate detail for <id>", "applicant counts", "draft a reply to a candidate", "Indeed passthrough", "run an Indeed GraphQL operation", "discover/add an Indeed operation", "is my Indeed session alive". Read-first: read recipes and passthrough-discovery are the core. Mutation procedures (status change, reject, shortlist, reply) are documented but take real, hard-to-reverse, server-audited actions on a live account — see references/write-procedures.md before any write.
+description: >
+  Use when working with Indeed Employer or hiring-portal applicant data through
+  the indeed_* MCP tools — jobs, applicants/candidates, CVs/resumes, applicant
+  detail, counts, notes, messages, or GraphQL passthrough. Trigger even when the
+  user does not say "Indeed" if context is hiring/applicants and they ask for a
+  named candidate's CV/resume, e.g. "get me NOWORRY DZENGA cv", "show Sarah's
+  resume", "download applicant CV", "new applicants for the cleaner job",
+  "list my Indeed jobs", "candidate detail", "applicant counts", "draft a reply
+  to a candidate", "run an Indeed GraphQL operation", or "is my Indeed session alive".
+  Read-first; before any mutation/status change/reject/shortlist/reply, read
+  references/write-procedures.md and confirm the exact target.
 ---
 
 # Indeed Employer
@@ -16,6 +26,8 @@ authenticated browser session. All tools are prefixed `indeed_`. The endpoint is
 
 ## When to use
 
+- "get me <candidate name> CV" / "show <applicant name>'s resume" / "download applicant CV"
+  when the surrounding context is hiring/applicants, even if the user does not say "Indeed"
 - "show me new candidates" / "new applicants for job X" / "list applicants"
 - "list my Indeed jobs" / "how many jobs / candidates do I have"
 - "candidate detail for <id>" / "applicant counts" / "filter options"
@@ -39,7 +51,7 @@ Wrap these typed read tools — all read-only, all already catalogued server-sid
 | Who am I / my permissions | `indeed_whoami` | logged-in employer user + grants |
 | List my jobs | `indeed_list_jobs(limit, statuses, sort_field, sort_direction)` | `statuses` e.g. `["ACTIVE"]`, `["PAUSED"]`, `["CLOSED"]` |
 | How many jobs | `indeed_count_jobs` | estimated total |
-| One job's fuller record | `indeed_job_detail(job_id)` | paged scan (no single-id API); raises if not found |
+| One job's fuller record | `indeed_job_detail(job_id)` | paged scan; `job_id` is the **base64 EmployerJob IRI token** (portal URL `selectedJobs` param), NOT `jobData.id` or `legacyId` |
 | List applicants | `indeed_list_candidates(limit, dispositions)` | **returns PII**; `dispositions` e.g. `["INTERVIEWED","OFFER_MADE"]` |
 | Counts by stage / sentiment | `indeed_candidate_counts` | milestone + shortlist counts |
 | Filter facets | `indeed_candidate_filter_options` | locations, milestones, sentiments |
@@ -51,6 +63,20 @@ Recipe pattern for "show me new candidates for job X":
 2. `indeed_list_jobs` → find job X's id/title (confirm with the user which job).
 3. `indeed_list_candidates` (filter by disposition for stage) → list applicants.
 4. For one person: `indeed_candidate_detail(submission_id)` → full record.
+
+**When typed tools fail — use the passthrough fallback.** The catalogued
+`indeed_candidate_detail`, `indeed_candidate_resume`, and `indeed_candidate_notes`
+use a paged scan (25 pages max by default). If the target is not in the first 5
+pages the tool raises "not found". Recovery: run a raw `indeed_graphql` passthrough
+with `findRCPMatches`, supplying the exact `submissionUuid` in
+`input.identifiers.candidateSubmissionUuids[]` (plural), and inline the fields you
+need — including the `resume` fragment for download URLs. See
+references/passthrough-discovery.md § Inline resume fetch for the exact query shape.
+
+**Resume download URLs are session-scoped.** The `downloadUrl` returned by
+`CandidatePdfResume` requires an active `employers.indeed.com` browser session.
+The agent cannot fetch the PDF bytes. Give the user the URL to click in their
+logged-in browser, or open the candidate in the portal.
 
 **PII discipline:** candidate tools return real people's names, contact details, and
 employment history. Surface only what the user asked for; never persist applicant
@@ -112,3 +138,9 @@ Done — one read, no PII dump.
 - Guessing passthrough variable keys — they drift; read references/passthrough-discovery.md.
 - Treating a mutation as routine. Writes are gated, audited, and hard to reverse.
 - Persisting or forwarding candidate PII beyond answering the immediate question.
+- **RankerException** (`Exception calling CANDIDATE_NAIVE_SORTER`) — usually means
+  the `findRCPMatches` input carries conflicting filters (e.g. `candidateSubmissionUuids`
+  combined with other constraints). Recovery: drop non-essential filters and retry
+  with a minimal input (just the UUID array + surface context).
+- Assuming the agent can fetch a resume PDF from `downloadUrl`. It can't — the URL
+  is session-scoped and the MCP has no browser cookies.

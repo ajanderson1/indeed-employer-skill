@@ -65,6 +65,74 @@ The typed tools can't do this yet. Use the passthrough:
 - `Nex_SmartScreeningSummary_Applicant` — `{scoutApplicationId, candidateSubmissionId, …}` (screener answers)
 - `FindEmployerInterviews` — `input.byCandidateSubmission.candidateSubmissionId`
 
+#### Inline resume fetch (when typed tools fail)
+The catalogued `indeed_candidate_resume` / `indeed_candidate_detail` do a paged scan
+and raise if the target is not in the first 5 pages. Use `findRCPMatches` with an
+explicit `candidateSubmissionUuids` filter and inline the `resume` fragment:
+
+```graphql
+query ListCandidatesWithResume($input: OrchestrationMatchesInput!) {
+  findRCPMatches(input: $input) {
+    matchConnection {
+      matches {
+        candidateSubmission {
+          id
+          data {
+            profile { name { displayName } }
+            resume {
+              __typename
+              ... on CandidatePdfResume {
+                id
+                downloadUrl
+                txtDownloadUrl
+              }
+              ... on CandidateHtmlFile {
+                id
+                downloadUrl
+                body
+              }
+              ... on CandidateTxtFile {
+                id
+                downloadUrl
+                body
+              }
+              ... on CandidateUnrenderableFile {
+                id
+                downloadUrl
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+Variables shape:
+```json
+{
+  "input": {
+    "clientSurfaceName": "candidate-list-page",
+    "defaultStrategyId": "U20GF",
+    "limit": 25,
+    "offset": 0,
+    "context": {
+      "surfaceContext": [
+        {"contextKey": "HOSTED_JOB_POST_STATUS", "contextPayload": "ACTIVE"},
+        {"contextKey": "HOSTED_JOB_POST_STATUS", "contextPayload": "PAUSED"}
+      ]
+    },
+    "identifiers": {
+      "candidateSubmissionUuids": ["<submission-uuid>"]
+    }
+  }
+}
+```
+
+**Caveat:** `candidateSubmissionUuids` plus other restrictive filters can trigger a
+`RankerException`. Keep the input minimal — only surface context + the UUID array.
+
 ### Messages (no typed tool yet — passthrough only)
 - `GetConversations` — inbox list: `{last, contexts[], scope:[{key,value}]}`
 - `GetConversationAndEvents` — one thread: `{conversationId, timelineModuleInput.{atk, telVersionUpperBound}}`
