@@ -56,7 +56,6 @@ Wrap these typed read tools — all read-only, all already catalogued server-sid
 | Counts by stage / sentiment | `indeed_candidate_counts` | milestone + shortlist counts |
 | Filter facets | `indeed_candidate_filter_options` | locations, milestones, sentiments |
 | One applicant, full record | `indeed_candidate_detail(submission_id)` | **PII**; paged scan; resume *availability*, not content |
-| Get CV download info | `indeed_download_cv(submission_id=<id>)` | **PII**; accepts raw submission UUID, base64 CandidateSubmission IRI, or candidate identity UUID fallback; returns GraphQL resume metadata + session-scoped URLs, never file bytes/base64 |
 | Notes / rejection comments | `indeed_candidate_notes(submission_id)` | **PII**; paged scan |
 
 Recipe pattern for "show me new candidates for job X":
@@ -64,7 +63,8 @@ Recipe pattern for "show me new candidates for job X":
 2. `indeed_list_jobs` → find job X's id/title (confirm with the user which job).
 3. `indeed_list_candidates` (filter by disposition for stage) → list applicants.
 4. For one person: `indeed_candidate_detail(submission_id)` → full record.
-5. For their CV download info: `indeed_download_cv(submission_id=<id>)` → GraphQL resume metadata and any session-scoped `downloadUrl` / `txtDownloadUrl`. Use the candidate's `submissionUuid` if present; base64 `candidateSubmission.id` also works; candidate identity UUID falls back to a bounded scan. Do **not** expect file bytes, resource links, base64, or server-side browser downloads.
+
+**CV download status.** No native CV/PDF download tool is exposed right now. The previous `indeed_download_cv` experiment was removed; the future proxy-download design is parked in issue #29. If the user asks for a CV, explain that this MCP can currently show resume availability from candidate detail, but cannot deliver the PDF yet.
 
 **When typed tools fail — use the passthrough fallback.** The catalogued
 `indeed_candidate_detail` and `indeed_candidate_notes` use a paged scan (25 pages
@@ -72,12 +72,6 @@ max by default). If the target is not in the first 5 pages the tool raises "not
 found". Recovery: run a raw `indeed_graphql` passthrough with `findRCPMatches`,
 supplying the exact `submissionUuid` in `input.identifiers.candidateSubmissionUuids[]`
 (plural), and inline the fields you need. See references/passthrough-discovery.md.
-
-**CV download discipline.** `indeed_download_cv` is GraphQL-only. It resolves a
-candidate submission UUID to resume metadata and returns any GraphQL-exposed
-`downloadUrl` / `txtDownloadUrl`; it does **not** fetch bytes through CloakBrowser,
-create `indeed://cv` resources, or emit base64. If a human needs the PDF, hand off
-the session-scoped URL to their logged-in browser or portal workflow.
 
 **PII discipline:** candidate tools return real people's names, contact details, and
 employment history. Surface only what the user asked for; never persist applicant
@@ -143,5 +137,4 @@ Done — one read, no PII dump.
   the `findRCPMatches` input carries conflicting filters (e.g. `candidateSubmissionUuids`
   combined with other constraints). Recovery: drop non-essential filters and retry
   with a minimal input (just the UUID array + surface context).
-- Assuming the agent can fetch a resume PDF from `downloadUrl`. It can't — the URL
-  is session-scoped and the MCP has no browser cookies.
+- Calling `indeed_download_cv`. It is intentionally removed until the proxy-download design in issue #29 is built.
