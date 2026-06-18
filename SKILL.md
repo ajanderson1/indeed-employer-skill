@@ -56,6 +56,7 @@ Wrap these typed read tools — all read-only, all already catalogued server-sid
 | Counts by stage / sentiment | `indeed_candidate_counts` | milestone + shortlist counts |
 | Filter facets | `indeed_candidate_filter_options` | locations, milestones, sentiments |
 | One applicant, full record | `indeed_candidate_detail(submission_id)` | **PII**; paged scan; resume *availability*, not content |
+| Download applicant CV | `indeed_download_cv(submission_id=<uuid>)` | **PII**; prefer the submission UUID from list/detail tools; returns metadata + `indeed://cv/<token>` resource link, not base64 text |
 | Notes / rejection comments | `indeed_candidate_notes(submission_id)` | **PII**; paged scan |
 
 Recipe pattern for "show me new candidates for job X":
@@ -63,20 +64,19 @@ Recipe pattern for "show me new candidates for job X":
 2. `indeed_list_jobs` → find job X's id/title (confirm with the user which job).
 3. `indeed_list_candidates` (filter by disposition for stage) → list applicants.
 4. For one person: `indeed_candidate_detail(submission_id)` → full record.
+5. For their CV: `indeed_download_cv(submission_id=<uuid>)` → MCP resource link. Read the resource and write bytes to a `.pdf`; do **not** print base64 or mine session logs.
 
 **When typed tools fail — use the passthrough fallback.** The catalogued
-`indeed_candidate_detail`, `indeed_candidate_resume`, and `indeed_candidate_notes`
-use a paged scan (25 pages max by default). If the target is not in the first 5
-pages the tool raises "not found". Recovery: run a raw `indeed_graphql` passthrough
-with `findRCPMatches`, supplying the exact `submissionUuid` in
-`input.identifiers.candidateSubmissionUuids[]` (plural), and inline the fields you
-need — including the `resume` fragment for download URLs. See
-references/passthrough-discovery.md § Inline resume fetch for the exact query shape.
+`indeed_candidate_detail` and `indeed_candidate_notes` use a paged scan (25 pages
+max by default). If the target is not in the first 5 pages the tool raises "not
+found". Recovery: run a raw `indeed_graphql` passthrough with `findRCPMatches`,
+supplying the exact `submissionUuid` in `input.identifiers.candidateSubmissionUuids[]`
+(plural), and inline the fields you need. See references/passthrough-discovery.md.
 
-**Resume download URLs are session-scoped.** The `downloadUrl` returned by
-`CandidatePdfResume` requires an active `employers.indeed.com` browser session.
-The agent cannot fetch the PDF bytes. Give the user the URL to click in their
-logged-in browser, or open the candidate in the portal.
+**CV download discipline.** `indeed_download_cv` resolves a candidate submission UUID
+to the hidden resume id server-side, then exposes the PDF as `indeed://cv/<token>`.
+A raw unauthenticated HTTP MCP client will 401 in live Google-OAuth mode; use the
+configured MCP client/session. Do not paste candidate CV bytes into chat.
 
 **PII discipline:** candidate tools return real people's names, contact details, and
 employment history. Surface only what the user asked for; never persist applicant

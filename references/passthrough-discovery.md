@@ -65,10 +65,10 @@ The typed tools can't do this yet. Use the passthrough:
 - `Nex_SmartScreeningSummary_Applicant` — `{scoutApplicationId, candidateSubmissionId, …}` (screener answers)
 - `FindEmployerInterviews` — `input.byCandidateSubmission.candidateSubmissionId`
 
-#### Inline resume fetch (when typed tools fail)
-The catalogued `indeed_candidate_resume` / `indeed_candidate_detail` do a paged scan
-and raise if the target is not in the first 5 pages. Use `findRCPMatches` with an
-explicit `candidateSubmissionUuids` filter and inline the `resume` fragment:
+#### Inline resume id fetch (internal fallback)
+`indeed_download_cv(submission_id=<uuid>)` resolves the hidden resume id server-side.
+If that resolver needs debugging, use `findRCPMatches` with an explicit
+`candidateSubmissionUuids` filter and inline the `resume` fragment:
 
 ```graphql
 query ListCandidatesWithResume($input: OrchestrationMatchesInput!) {
