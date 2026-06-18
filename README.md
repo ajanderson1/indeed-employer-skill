@@ -67,6 +67,12 @@ When typed tools do not cover a portal capability, the skill explains how to use
 
 See [`references/passthrough-discovery.md`](references/passthrough-discovery.md) for captured GraphQL operation patterns and variable shapes.
 
+### Development skills
+
+Development-only helper skills live under [`dev_skills/`](dev_skills/). These are for maintainers extending the MCP server, not for day-to-day applicant lookup. Current helper:
+
+- [`dev_skills/indeed-sniff`](dev_skills/indeed-sniff/) — HITL `agent-browser` workflow for sniffing dashboard GraphQL and scaffolding native MCP tools.
+
 ## Safety model
 
 Indeed Employer data contains real applicant personally identifiable information (PII). This skill is intentionally conservative.
@@ -114,6 +120,8 @@ The skill is useful for prompts involving:
 ├── references/
 │   ├── passthrough-discovery.md     # GraphQL discovery notes
 │   └── write-procedures.md          # Guarded mutation procedures
+├── dev_skills/
+│   └── indeed-sniff/                # Maintainer workflow for adding native tools
 ├── LICENSE
 └── README.md
 ```

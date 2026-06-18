@@ -14,6 +14,7 @@ its canonical clone `~/.agent-toolkit/skills/indeed-employer/`.
 
 - `SKILL.md` — the skill itself; frontmatter + body
 - `references/` — supporting detail loaded on demand (optional)
+- `dev_skills/` — maintainer-only development skills for extending the Indeed MCP/server workflow
 - `templates/` — files this skill stamps elsewhere (rare)
 
 ## Editing
