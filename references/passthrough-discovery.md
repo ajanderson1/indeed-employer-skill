@@ -65,11 +65,12 @@ The typed tools can't do this yet. Use the passthrough:
 - `Nex_SmartScreeningSummary_Applicant` — `{scoutApplicationId, candidateSubmissionId, …}` (screener answers)
 - `FindEmployerInterviews` — `input.byCandidateSubmission.candidateSubmissionId`
 
-#### Inline resume id fetch (internal fallback)
-`indeed_download_cv(submission_id=<id>)` resolves the hidden resume id server-side.
-It accepts raw `submissionUuid`, base64 `candidateSubmission.id`, and candidate
-identity UUID fallback. If that resolver needs debugging, use `findRCPMatches` with
-an explicit `candidateSubmissionUuids` filter and inline the `resume` fragment:
+#### Inline resume metadata fetch (internal fallback)
+`indeed_download_cv(submission_id=<id>)` resolves GraphQL resume metadata/links
+server-side. It accepts raw `submissionUuid`, base64 `candidateSubmission.id`, and
+candidate identity UUID fallback. If that resolver needs debugging, use
+`findRCPMatches` with an explicit `candidateSubmissionUuids` filter and inline the
+`resume` fragment:
 
 ```graphql
 query ListCandidatesWithResume($input: OrchestrationMatchesInput!) {
