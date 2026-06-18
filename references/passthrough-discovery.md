@@ -66,9 +66,10 @@ The typed tools can't do this yet. Use the passthrough:
 - `FindEmployerInterviews` — `input.byCandidateSubmission.candidateSubmissionId`
 
 #### Inline resume id fetch (internal fallback)
-`indeed_download_cv(submission_id=<uuid>)` resolves the hidden resume id server-side.
-If that resolver needs debugging, use `findRCPMatches` with an explicit
-`candidateSubmissionUuids` filter and inline the `resume` fragment:
+`indeed_download_cv(submission_id=<id>)` resolves the hidden resume id server-side.
+It accepts raw `submissionUuid`, base64 `candidateSubmission.id`, and candidate
+identity UUID fallback. If that resolver needs debugging, use `findRCPMatches` with
+an explicit `candidateSubmissionUuids` filter and inline the `resume` fragment:
 
 ```graphql
 query ListCandidatesWithResume($input: OrchestrationMatchesInput!) {

@@ -56,7 +56,7 @@ Wrap these typed read tools — all read-only, all already catalogued server-sid
 | Counts by stage / sentiment | `indeed_candidate_counts` | milestone + shortlist counts |
 | Filter facets | `indeed_candidate_filter_options` | locations, milestones, sentiments |
 | One applicant, full record | `indeed_candidate_detail(submission_id)` | **PII**; paged scan; resume *availability*, not content |
-| Download applicant CV | `indeed_download_cv(submission_id=<uuid>)` | **PII**; prefer the submission UUID from list/detail tools; returns metadata + `indeed://cv/<token>` resource link, not base64 text |
+| Download applicant CV | `indeed_download_cv(submission_id=<id>)` | **PII**; accepts raw submission UUID, base64 CandidateSubmission IRI, or candidate identity UUID fallback; returns metadata + `indeed://cv/<token>` resource link, not base64 text |
 | Notes / rejection comments | `indeed_candidate_notes(submission_id)` | **PII**; paged scan |
 
 Recipe pattern for "show me new candidates for job X":
@@ -64,7 +64,7 @@ Recipe pattern for "show me new candidates for job X":
 2. `indeed_list_jobs` → find job X's id/title (confirm with the user which job).
 3. `indeed_list_candidates` (filter by disposition for stage) → list applicants.
 4. For one person: `indeed_candidate_detail(submission_id)` → full record.
-5. For their CV: `indeed_download_cv(submission_id=<uuid>)` → MCP resource link. Read the resource and write bytes to a `.pdf`; do **not** print base64 or mine session logs.
+5. For their CV: `indeed_download_cv(submission_id=<id>)` → MCP resource link. Use the candidate's `submissionUuid` if present; base64 `candidateSubmission.id` also works; candidate identity UUID falls back to a bounded scan. Read the resource and write bytes to a `.pdf`; do **not** print base64 or mine session logs.
 
 **When typed tools fail — use the passthrough fallback.** The catalogued
 `indeed_candidate_detail` and `indeed_candidate_notes` use a paged scan (25 pages
