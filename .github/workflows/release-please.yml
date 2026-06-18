@@ -72,6 +72,11 @@ jobs:
 
           (cd dist && zip -r "$(basename "$archive")" indeed-employer)
 
+          if unzip -l "$archive" | grep -q 'dev_skills/'; then
+            echo "ERROR: release archive contains dev_skills/" >&2
+            exit 1
+          fi
+
       - name: Upload skill release asset
         if: ${{ steps.bump.outputs.is_minor == 'true' }}
         env:

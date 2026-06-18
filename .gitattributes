@@ -1,0 +1,2 @@
+# Keep dev-only skills out of release source archives.
+dev_skills export-ignore
